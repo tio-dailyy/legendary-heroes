@@ -1,0 +1,863 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<title>Ruins of the Forgotten Tower</title>
+<style>
+  :root{
+    --bg:#0e0b16;
+    --panel:#1c1626;
+    --panel-edge:#3a2e52;
+    --gold:#d4af6a;
+    --gold-dim:#8a7346;
+    --text:#ece6f0;
+    --text-dim:#a89bbf;
+    --fire:#e2593a;
+    --water:#3a8fe2;
+    --earth:#5e9c4a;
+    --hp:#b5384a;
+    --hp-bg:#3a1620;
+  }
+  *{box-sizing:border-box;}
+  html,body{
+    margin:0;padding:0;height:100%;
+    background:radial-gradient(ellipse at 50% 0%, #241a35 0%, var(--bg) 70%);
+    color:var(--text);
+    font-family:'Georgia','Times New Roman',serif;
+    overflow:hidden;
+  }
+  #game{
+    position:relative;
+    width:100vw;height:100vh;
+    display:flex;align-items:center;justify-content:center;
+  }
+  #frame{
+    width:900px;max-width:96vw;
+    height:640px;max-height:92vh;
+    background:var(--panel);
+    border:2px solid var(--panel-edge);
+    border-radius:10px;
+    box-shadow:0 0 60px rgba(120,80,200,0.25), inset 0 0 40px rgba(0,0,0,0.5);
+    position:relative;
+    display:flex;flex-direction:column;
+    overflow:hidden;
+  }
+  #topbar{
+    display:flex;justify-content:space-between;align-items:center;
+    padding:10px 16px;
+    border-bottom:1px solid var(--panel-edge);
+    background:linear-gradient(180deg, rgba(255,255,255,0.03), transparent);
+    font-size:14px;
+    letter-spacing:0.5px;
+  }
+  #topbar .title{color:var(--gold);font-weight:bold;text-shadow:0 0 8px rgba(212,175,106,0.4);}
+  #stats{display:flex;gap:18px;align-items:center;font-size:13px;color:var(--text-dim);}
+  #hpbar-wrap{width:110px;height:10px;background:var(--hp-bg);border:1px solid var(--gold-dim);border-radius:5px;overflow:hidden;}
+  #hpbar{height:100%;background:linear-gradient(90deg,#8a2030,var(--hp));transition:width .3s;}
+  #main{
+    flex:1;position:relative;
+    display:flex;align-items:center;justify-content:center;
+    background:
+      repeating-linear-gradient(0deg, rgba(255,255,255,0.015) 0 1px, transparent 1px 32px),
+      repeating-linear-gradient(90deg, rgba(255,255,255,0.015) 0 1px, transparent 1px 32px);
+  }
+  #screen{width:100%;height:100%;position:relative;}
+  .center-msg{
+    position:absolute;inset:0;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    text-align:center;padding:30px;gap:14px;
+  }
+  .center-msg h1{color:var(--gold);font-size:32px;margin:0;letter-spacing:1px;text-shadow:0 0 14px rgba(212,175,106,0.35);}
+  .center-msg h2{color:var(--gold);font-size:22px;margin:0;}
+  .center-msg p{color:var(--text-dim);max-width:560px;line-height:1.6;font-size:15px;}
+  .hint{color:var(--gold-dim);font-size:13px;margin-top:6px;}
+  .btnish{
+    display:inline-block;margin-top:10px;padding:8px 18px;
+    border:1px solid var(--gold-dim);border-radius:6px;color:var(--gold);
+    font-size:13px;letter-spacing:1px;
+  }
+  /* --- Overworld grid --- */
+  #gridWrap{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;}
+  #grid{display:grid;gap:2px;}
+  .cell{
+    width:44px;height:44px;
+    display:flex;align-items:center;justify-content:center;
+    font-size:22px;
+    background:rgba(255,255,255,0.02);
+    border:1px solid rgba(255,255,255,0.04);
+    border-radius:4px;
+    position:relative;
+  }
+  .cell.wall{background:rgba(0,0,0,0.35);border-color:rgba(0,0,0,0.5);}
+  .cell.floor{background:rgba(255,255,255,0.025);}
+  .cell.door{background:rgba(212,175,106,0.12);border-color:var(--gold-dim);}
+  .cell.player{background:rgba(150,120,220,0.18);box-shadow:0 0 12px rgba(150,120,220,0.5);}
+  .cell.npc{background:rgba(212,175,106,0.15);}
+  .cell.item{background:rgba(90,180,120,0.12);}
+  /* --- Dialog box --- */
+  #dialog{
+    position:absolute;left:20px;right:20px;bottom:20px;
+    background:rgba(10,8,16,0.92);
+    border:1px solid var(--gold-dim);
+    border-radius:8px;
+    padding:16px 18px;
+    font-size:14.5px;line-height:1.55;
+    color:var(--text);
+    box-shadow:0 6px 24px rgba(0,0,0,0.5);
+  }
+  #dialog .speaker{color:var(--gold);font-weight:bold;font-size:13px;margin-bottom:6px;letter-spacing:0.5px;}
+  #dialog .cont{color:var(--gold-dim);font-size:12px;margin-top:8px;text-align:right;}
+  /* --- Puzzle overlay --- */
+  #puzzleOverlay{
+    position:absolute;inset:0;
+    background:rgba(6,4,10,0.94);
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    padding:24px;gap:14px;
+  }
+  #puzzleOverlay h2{color:var(--gold);margin:0 0 4px 0;font-size:20px;}
+  #puzzleOverlay .desc{color:var(--text-dim);font-size:13.5px;max-width:520px;text-align:center;line-height:1.5;margin-bottom:6px;}
+  .runeGrid{display:grid;grid-template-columns:repeat(4,64px);gap:8px;}
+  .rune{
+    width:64px;height:64px;border-radius:8px;
+    background:linear-gradient(160deg,#2a2140,#1a1428);
+    border:1px solid var(--panel-edge);
+    display:flex;align-items:center;justify-content:center;
+    font-size:26px;cursor:pointer;user-select:none;
+    transition:transform .15s, border-color .15s;
+  }
+  .rune.selected{border-color:var(--gold);box-shadow:0 0 14px rgba(212,175,106,0.4);}
+  .rune.matched{opacity:0.25;pointer-events:none;}
+  .sokoban{display:grid;gap:2px;}
+  .sokoban .scell{width:40px;height:40px;display:flex;align-items:center;justify-content:center;font-size:20px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.05);border-radius:4px;}
+  .sokoban .swall{background:rgba(0,0,0,0.4);}
+  .sokoban .starget{background:rgba(212,175,106,0.15);border-color:var(--gold-dim);}
+  .seqRow{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;max-width:560px;}
+  .seqCard{
+    padding:10px 14px;border:1px solid var(--panel-edge);border-radius:6px;
+    background:#211a30;cursor:pointer;font-size:14px;min-width:120px;text-align:center;
+  }
+  .seqCard.picked{border-color:var(--gold);color:var(--gold);opacity:0.5;}
+  .seqSlots{display:flex;gap:8px;}
+  .seqSlot{width:36px;height:36px;border:1px dashed var(--gold-dim);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:13px;color:var(--gold);}
+  .elemBtns{display:flex;gap:14px;}
+  .elemBtn{
+    width:80px;height:80px;border-radius:10px;border:1px solid var(--panel-edge);
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;
+    font-size:26px;cursor:pointer;background:#1a1428;
+  }
+  .elemBtn span{font-size:11px;color:var(--text-dim);}
+  .elemBtn.fire:hover{border-color:var(--fire);}
+  .elemBtn.water:hover{border-color:var(--water);}
+  .elemBtn.earth:hover{border-color:var(--earth);}
+  #battleStatus{display:flex;gap:40px;font-size:13px;color:var(--text-dim);}
+  #footer{
+    border-top:1px solid var(--panel-edge);
+    padding:8px 16px;font-size:12px;color:var(--text-dim);
+    display:flex;justify-content:space-between;
+  }
+  #footer .keys{color:var(--gold-dim);}
+  .flash{animation:flash .4s;}
+  @keyframes flash{0%{background:rgba(212,175,106,0.25);}100%{background:transparent;}}
+  .shake{animation:shake .3s;}
+  @keyframes shake{0%,100%{transform:translateX(0);}25%{transform:translateX(-6px);}75%{transform:translateX(6px);}}
+</style>
+</head>
+<body>
+<div id="game">
+  <div id="frame">
+    <div id="topbar">
+      <div class="title">⛨ RUINS OF THE FORGOTTEN TOWER</div>
+      <div id="stats">
+        <span id="lvlDisplay">Lv.1</span>
+        <span>HP <span id="hpText">30/30</span></span>
+        <div id="hpbar-wrap"><div id="hpbar" style="width:100%"></div></div>
+        <span id="floorDisplay">Lantai 0</span>
+      </div>
+    </div>
+    <div id="main"><div id="screen"></div></div>
+    <div id="footer">
+      <span id="footerLeft">Selamat datang, penjelajah.</span>
+      <span class="keys">WASD/Panah bergerak · Enter/Space interaksi · Esc menu</span>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  const screen = document.getElementById('screen');
+  const hpbar = document.getElementById('hpbar');
+  const hpText = document.getElementById('hpText');
+  const lvlDisplay = document.getElementById('lvlDisplay');
+  const floorDisplay = document.getElementById('floorDisplay');
+  const footerLeft = document.getElementById('footerLeft');
+
+  const state = {
+    scene: 'intro', // intro, overworld, dialog, puzzle, battle, ending
+    hp: 30, maxHp: 30, level: 1,
+    floor: 0,
+    inventory: [],
+    dialogQueue: [],
+    dialogCallback: null,
+    puzzle: null,
+    px: 1, py: 1,
+    grid: null,
+    keysLocked: false
+  };
+
+  function setHP(v){
+    state.hp = Math.max(0, Math.min(state.maxHp, v));
+    hpbar.style.width = (state.hp/state.maxHp*100)+'%';
+    hpText.textContent = state.hp+'/'+state.maxHp;
+  }
+  function levelUp(){
+    state.level++;
+    state.maxHp += 8;
+    state.hp = state.maxHp;
+    lvlDisplay.textContent = 'Lv.'+state.level;
+    setHP(state.hp);
+  }
+  function setFloor(n){ state.floor = n; floorDisplay.textContent = 'Lantai '+n; }
+
+  // ---------- DIALOG SYSTEM ----------
+  function showDialog(lines, speaker, onDone){
+    state.scene = 'dialog';
+    state.dialogQueue = lines.slice();
+    state.dialogSpeaker = speaker || '';
+    state.dialogCallback = onDone || null;
+    renderDialog();
+  }
+  function renderDialog(){
+    const line = state.dialogQueue[0];
+    screen.innerHTML = `
+      <div class="center-msg" style="justify-content:flex-end;padding-bottom:100px;">
+      </div>
+      <div id="dialog">
+        ${state.dialogSpeaker ? `<div class="speaker">${state.dialogSpeaker}</div>` : ''}
+        <div>${line}</div>
+        <div class="cont">▼ Enter/Space untuk lanjut</div>
+      </div>
+    `;
+  }
+  function advanceDialog(){
+    state.dialogQueue.shift();
+    if(state.dialogQueue.length){
+      renderDialog();
+    } else {
+      const cb = state.dialogCallback;
+      state.dialogCallback = null;
+      if(cb) cb();
+    }
+  }
+
+  // ---------- INTRO ----------
+  function showIntro(){
+    state.scene = 'intro';
+    screen.innerHTML = `
+      <div class="center-msg">
+        <h1>Ruins of the Forgotten Tower</h1>
+        <p>Berabad-abad lalu, sebuah menara disegel oleh para penyihir kerajaan untuk mengurung kutukan yang nyaris memusnahkan negeri.
+        Kini segelnya melemah, dan bayang-bayang mulai merayap keluar lagi.</p>
+        <p>Kau, seorang penjelajah muda berbekal sedikit sihir warisan keluarga, masuk ke reruntuhan itu — mencari artefak legendaris
+        sekaligus jawaban atas kutukan yang menimpa kampung halamanmu.</p>
+        <div class="btnish">Tekan ENTER / SPACE untuk memulai</div>
+      </div>
+    `;
+    state.pendingStart = true;
+  }
+
+  // ---------- FLOOR DEFINITIONS ----------
+  // Each floor: intro dialog -> overworld with a puzzle door -> puzzle -> outro dialog -> next floor
+  const floors = [
+    null, // index 0 unused
+    {
+      name:'Gerbang Rune',
+      intro:[
+        "Kau melangkah masuk. Udara dingin dan berdebu, dihiasi ukiran rune yang berpendar redup.",
+        "Sebuah suara berbisik dari dinding: \"Hanya yang mampu mengenali pasangan rune kuno boleh lewat.\"",
+        "Di depanmu tampak gerbang batu besar dengan susunan simbol yang berantakan."
+      ],
+      puzzleType:'match',
+      outro:[
+        "Rune-rune bersinar serempak, lalu gerbang bergemuruh terbuka.",
+        "Kau merasakan sedikit kekuatan mengalir ke dalam dirimu."
+      ]
+    },
+    {
+      name:'Ruang Cermin',
+      intro:[
+        "Ruangan ini dipenuhi cermin retak yang memantulkan dirimu berkali-kali dengan aneh.",
+        "Di lantai, balok-balok berukir harus didorong ke alas bercahaya agar cerminnya pecah dan jalan terbuka."
+      ],
+      puzzleType:'sokoban',
+      outro:[
+        "Balok terakhir jatuh ke alasnya. Cermin-cermin retak berderak lalu hancur berkeping.",
+        "Di baliknya, tangga menuju lantai berikutnya terlihat."
+      ]
+    },
+    {
+      name:'Perpustakaan Terkutuk',
+      intro:[
+        "Rak-rak buku tua berdiri miring, sebagian melayang pelan seolah tak terpengaruh gravitasi.",
+        "Sebuah buku mantra terbuka sendiri di podium: \"Susun mantra sesuai urutan kekuatan — dari yang terlemah ke yang terkuat.\""
+      ],
+      puzzleType:'sequence',
+      outro:[
+        "Mantra tersusun benar. Buku itu bersinar dan sebuah lorong rahasia terbuka di balik rak.",
+        "Kau mendengar erangan pelan dari lantai atas — sesuatu sudah tahu kau datang."
+      ]
+    },
+    {
+      name:'Aula Penjaga',
+      intro:[
+        "Sesosok roh penjaga bersenjata api-air-tanah muncul dari lantai berukir, matanya menyala.",
+        "\"Buktikan dirimu, penjelajah,\" desisnya. \"Api mengalahkan Tanah. Air mengalahkan Api. Tanah mengalahkan Air.\""
+      ],
+      puzzleType:'battle',
+      outro:[
+        "Roh penjaga membungkuk, cahayanya meredup lalu menghilang perlahan.",
+        "\"Kau... layak melangkah lebih jauh,\" bisiknya sebelum lenyap sepenuhnya."
+      ]
+    },
+    {
+      name:'Ruang Puncak',
+      intro:[
+        "Kau tiba di puncak menara. Di tengah ruangan, sebuah altar menahan artefak yang bersinar keemasan.",
+        "Namun altar itu terkunci oleh gabungan rune dan mantra — ujian terakhir sebelum kau boleh menyentuhnya."
+      ],
+      puzzleType:'final',
+      outro:[
+        "Kunci terakhir terbuka. Cahaya keemasan meledak lembut, mengisi seluruh ruangan.",
+        "Kau mengangkat artefak itu tinggi-tinggi. Kutukan yang mengintai kampung halamanmu, perlahan, mulai terurai."
+      ]
+    }
+  ];
+
+  function startFloor(n){
+    setFloor(n);
+    const f = floors[n];
+    showDialog(f.intro, 'Narator', ()=>{
+      showOverworldForFloor(n);
+    });
+  }
+
+  // ---------- OVERWORLD ----------
+  function showOverworldForFloor(n){
+    state.scene = 'overworld';
+    state.px = 1; state.py = 3;
+    screen.innerHTML = `
+      <div id="gridWrap"><div id="grid"></div></div>
+      <div class="hint" style="position:absolute;top:10px;left:16px;">${floors[n].name} — berjalan ke pintu (D) untuk masuk teka-teki</div>
+    `;
+    renderOverworldGrid();
+    footerLeft.textContent = 'Berjalan menuju pintu berkilau untuk menghadapi teka-teki lantai ini.';
+  }
+
+  function renderOverworldGrid(){
+    const grid = document.getElementById('grid');
+    const w=7,h=5;
+    grid.style.gridTemplateColumns = `repeat(${w}, 44px)`;
+    grid.innerHTML='';
+    for(let y=0;y<h;y++){
+      for(let x=0;x<w;x++){
+        const cell = document.createElement('div');
+        cell.className='cell';
+        const isWall = (y===0||y===h-1||x===0||x===w-1);
+        const isDoor = (x===w-2 && y===2);
+        if(isWall) cell.classList.add('wall');
+        else cell.classList.add('floor');
+        if(isDoor){ cell.classList.add('door'); cell.textContent='🚪'; }
+        if(x===state.px && y===state.py){
+          cell.classList.add('player');
+          cell.textContent='🧙';
+        }
+        grid.appendChild(cell);
+      }
+    }
+  }
+
+  function moveOverworld(dx,dy){
+    const w=7,h=5;
+    let nx = state.px+dx, ny = state.py+dy;
+    if(nx<=0||nx>=w-1||ny<=0||ny>=h-1) return;
+    state.px=nx; state.py=ny;
+    renderOverworldGrid();
+    if(state.px===w-2 && state.py===2){
+      enterPuzzle(state.floor);
+    }
+  }
+
+  // ---------- PUZZLE ROUTER ----------
+  function enterPuzzle(n){
+    const f = floors[n];
+    state.scene='puzzle';
+    if(f.puzzleType==='match') startMatchPuzzle(n);
+    else if(f.puzzleType==='sokoban') startSokobanPuzzle(n);
+    else if(f.puzzleType==='sequence') startSequencePuzzle(n);
+    else if(f.puzzleType==='battle') startBattlePuzzle(n);
+    else if(f.puzzleType==='final') startFinalPuzzle(n);
+  }
+
+  function completeFloor(n){
+    const f = floors[n];
+    levelUp();
+    showDialog(f.outro, 'Narator', ()=>{
+      if(n < floors.length-1){
+        startFloor(n+1);
+      } else {
+        showEnding();
+      }
+    });
+  }
+
+  // ---------- PUZZLE 1: RUNE MATCH ----------
+  const runeSymbols = ['🜁','🜂','🜃','🜄','☉','☾','✧','⚚'];
+  function startMatchPuzzle(n){
+    let pairs = runeSymbols.slice(0,8);
+    let deck = pairs.concat(pairs);
+    deck.sort(()=>Math.random()-0.5);
+    state.puzzle = {deck, flipped:[], matched:new Set(), busy:false};
+    renderMatchPuzzle();
+  }
+  function renderMatchPuzzle(){
+    const p = state.puzzle;
+    screen.innerHTML = `
+      <div id="puzzleOverlay">
+        <h2>Gerbang Rune</h2>
+        <div class="desc">Cocokkan sepasang rune yang sama. Gunakan panah untuk memilih, Enter untuk membuka.</div>
+        <div class="runeGrid" id="runeGrid"></div>
+        <div class="hint">Terbuka: ${p.matched.size/2}/8 pasang</div>
+      </div>
+    `;
+    const g = document.getElementById('runeGrid');
+    g.innerHTML='';
+    p.deck.forEach((sym,i)=>{
+      const el = document.createElement('div');
+      el.className='rune';
+      if(p.matched.has(i)) el.classList.add('matched');
+      if(p.flipped.includes(i) || p.matched.has(i)) el.textContent = sym;
+      else el.textContent='';
+      if(i===p.cursor) el.classList.add('selected');
+      g.appendChild(el);
+    });
+    if(p.cursor===undefined) p.cursor=0;
+  }
+  function matchInput(key){
+    const p = state.puzzle;
+    if(p.busy) return;
+    let c = p.cursor||0;
+    const cols=4;
+    if(key==='left') c = (c%cols===0)? c+cols-1 : c-1;
+    else if(key==='right') c = (c%cols===cols-1)? c-cols+1 : c+1;
+    else if(key==='up') c = (c-cols+16)%16;
+    else if(key==='down') c = (c+cols)%16;
+    else if(key==='confirm'){
+      if(!p.matched.has(c) && !p.flipped.includes(c)){
+        p.flipped.push(c);
+        if(p.flipped.length===2){
+          p.busy=true;
+          renderMatchPuzzle();
+          setTimeout(()=>{
+            const [a,b]=p.flipped;
+            if(p.deck[a]===p.deck[b]){
+              p.matched.add(a); p.matched.add(b);
+            }
+            p.flipped=[];
+            p.busy=false;
+            renderMatchPuzzle();
+            if(p.matched.size===16){
+              setTimeout(()=>completeFloor(1), 400);
+            }
+          }, 550);
+          return;
+        }
+      }
+    }
+    p.cursor=c;
+    renderMatchPuzzle();
+  }
+
+  // ---------- PUZZLE 2: SOKOBAN ----------
+  function startSokobanPuzzle(n){
+    // simple 6x6 sokoban
+    // # wall, . floor, T target, B box, P player
+    const layout = [
+      "######",
+      "#....#",
+      "#.BT.#",
+      "#.T#.#",
+      "#..B.#",
+      "######"
+    ];
+    let grid = layout.map(r=>r.split(''));
+    let player = {x:1,y:1};
+    state.puzzle = {grid, player};
+    renderSokoban();
+  }
+  function renderSokoban(){
+    const p = state.puzzle;
+    screen.innerHTML = `
+      <div id="puzzleOverlay">
+        <h2>Ruang Cermin</h2>
+        <div class="desc">Dorong balok (📦) ke alas bercahaya (◎) menggunakan panah/WASD.</div>
+        <div class="sokoban" id="sokobanGrid"></div>
+      </div>
+    `;
+    const g = document.getElementById('sokobanGrid');
+    g.style.gridTemplateColumns = `repeat(${p.grid[0].length}, 40px)`;
+    g.innerHTML='';
+    for(let y=0;y<p.grid.length;y++){
+      for(let x=0;x<p.grid[0].length;x++){
+        const ch = p.grid[y][x];
+        const cell = document.createElement('div');
+        cell.className='scell';
+        if(ch==='#') cell.classList.add('swall');
+        if(ch==='T'||ch==='X') cell.classList.add('starget');
+        if(x===p.player.x && y===p.player.y) cell.textContent='🧙';
+        else if(ch==='B') cell.textContent='📦';
+        else if(ch==='X') cell.textContent='✅';
+        else if(ch==='T') cell.textContent='◎';
+        g.appendChild(cell);
+      }
+    }
+  }
+  function sokobanInput(key){
+    const p = state.puzzle;
+    let dx=0,dy=0;
+    if(key==='left') dx=-1; else if(key==='right') dx=1;
+    else if(key==='up') dy=-1; else if(key==='down') dy=1;
+    else return;
+    const {grid, player} = p;
+    const nx=player.x+dx, ny=player.y+dy;
+    const target = grid[ny][nx];
+    if(target==='#') return;
+    if(target==='B'){
+      const bx=nx+dx, by=ny+dy;
+      const beyond = grid[by][bx];
+      if(beyond==='#'||beyond==='B'||beyond==='X') return;
+      grid[by][bx] = (beyond==='T') ? 'X' : 'B';
+      grid[ny][nx] = grid[ny][nx]==='B' ? '.' : grid[ny][nx];
+    }
+    player.x=nx; player.y=ny;
+    renderSokoban();
+    // check win: no more 'B' or 'T' remaining that isn't matched
+    let boxesLeft=false;
+    for(const row of grid) if(row.includes('B')) boxesLeft=true;
+    if(!boxesLeft){
+      setTimeout(()=>completeFloor(2), 400);
+    }
+  }
+
+  // ---------- PUZZLE 3: SEQUENCE ----------
+  function startSequencePuzzle(n){
+    const spells = [
+      {name:'Percikan Api', power:1},
+      {name:'Angin Sepoi', power:2},
+      {name:'Pukulan Batu', power:3},
+      {name:'Petir Menggelegar', power:4}
+    ];
+    let pool = spells.slice().sort(()=>Math.random()-0.5);
+    state.puzzle = {pool, picked:[], answer:spells.map(s=>s.name).sort((a,b)=>{
+      return spells.find(s=>s.name===a).power - spells.find(s=>s.name===b).power;
+    })};
+    renderSequence();
+  }
+  function renderSequence(){
+    const p = state.puzzle;
+    screen.innerHTML = `
+      <div id="puzzleOverlay">
+        <h2>Perpustakaan Terkutuk</h2>
+        <div class="desc">Susun mantra dari yang <b>terlemah ke terkuat</b>. Pilih kartu sesuai urutan menggunakan panah kiri/kanan lalu Enter.</div>
+        <div class="seqSlots" id="seqSlots"></div>
+        <div class="seqRow" id="seqRow"></div>
+      </div>
+    `;
+    const slotsEl = document.getElementById('seqSlots');
+    slotsEl.innerHTML='';
+    for(let i=0;i<4;i++){
+      const s = document.createElement('div');
+      s.className='seqSlot';
+      s.textContent = p.picked[i] ? (i+1) : '';
+      slotsEl.appendChild(s);
+    }
+    const row = document.getElementById('seqRow');
+    row.innerHTML='';
+    if(p.cursor===undefined) p.cursor=0;
+    p.pool.forEach((spell,i)=>{
+      const el = document.createElement('div');
+      el.className='seqCard';
+      if(p.picked.includes(spell.name)) el.classList.add('picked');
+      if(i===p.cursor) el.style.borderColor='var(--gold)';
+      el.textContent = spell.name;
+      row.appendChild(el);
+    });
+  }
+  function sequenceInput(key){
+    const p = state.puzzle;
+    let c = p.cursor||0;
+    if(key==='left') c = (c-1+p.pool.length)%p.pool.length;
+    else if(key==='right') c = (c+1)%p.pool.length;
+    else if(key==='confirm'){
+      const spell = p.pool[c];
+      if(!p.picked.includes(spell.name)){
+        p.picked.push(spell.name);
+      }
+      if(p.picked.length===4){
+        const correct = p.picked.every((name,i)=>name===p.answer[i]);
+        if(correct){
+          setTimeout(()=>completeFloor(3), 300);
+        } else {
+          footerLeft.textContent = 'Urutan salah! Mencoba lagi...';
+          p.picked=[];
+        }
+      }
+    }
+    p.cursor=c;
+    renderSequence();
+  }
+
+  // ---------- PUZZLE 4: ELEMENTAL BATTLE ----------
+  function startBattlePuzzle(n){
+    const rounds = 3;
+    state.puzzle = {round:1, totalRounds:rounds, enemyHp:3, resultMsg:''};
+    renderBattle();
+  }
+  const beats = {fire:'earth', water:'fire', earth:'water'};
+  const elemLabel = {fire:'🔥 Api', water:'💧 Air', earth:'🪨 Tanah'};
+  function renderBattle(){
+    const p = state.puzzle;
+    screen.innerHTML = `
+      <div id="puzzleOverlay">
+        <h2>Aula Penjaga</h2>
+        <div class="desc">Roh penjaga menyerang bergantian dengan Api/Air/Tanah. Api > Tanah, Air > Api, Tanah > Air. Pilih elemen untuk mengalahkannya.</div>
+        <div id="battleStatus"><span>Roh Penjaga: ${'❤'.repeat(p.enemyHp)}${'♡'.repeat(3-p.enemyHp)}</span><span>Ronde ${p.round}/${p.totalRounds}</span></div>
+        <div class="elemBtns" id="elemBtns">
+          <div class="elemBtn fire" data-e="fire">🔥<span>Api</span></div>
+          <div class="elemBtn water" data-e="water">💧<span>Air</span></div>
+          <div class="elemBtn earth" data-e="earth">🪨<span>Tanah</span></div>
+        </div>
+        <div class="hint" id="battleMsg">${p.resultMsg}</div>
+      </div>
+    `;
+    if(p.cursor===undefined) p.cursor=0;
+    const btns = document.querySelectorAll('.elemBtn');
+    btns.forEach((b,i)=>{ if(i===p.cursor) b.style.borderColor='var(--gold)'; });
+  }
+  function battleInput(key){
+    const p = state.puzzle;
+    const elems = ['fire','water','earth'];
+    let c = p.cursor||0;
+    if(key==='left') c=(c-1+3)%3;
+    else if(key==='right') c=(c+1)%3;
+    else if(key==='confirm'){
+      const enemyElem = elems[Math.floor(Math.random()*3)];
+      const myElem = elems[c];
+      if(beats[myElem]===enemyElem){
+        p.enemyHp--;
+        p.resultMsg = `${elemLabel[myElem]} mengalahkan ${elemLabel[enemyElem]}! Penjaga terluka.`;
+      } else if(myElem===enemyElem){
+        p.resultMsg = `Seri! Penjaga juga memilih ${elemLabel[enemyElem]}.`;
+      } else {
+        setHP(state.hp-4);
+        p.resultMsg = `${elemLabel[enemyElem]} mengalahkan ${elemLabel[myElem]}! Kau terluka.`;
+      }
+      p.round++;
+      if(p.enemyHp<=0){
+        setTimeout(()=>completeFloor(4), 500);
+        return;
+      }
+      if(state.hp<=0){
+        showGameOver();
+        return;
+      }
+      if(p.round>p.totalRounds && p.enemyHp>0){
+        // extend battle until resolved but cap safety
+        p.totalRounds+=1;
+      }
+    }
+    p.cursor=c;
+    renderBattle();
+  }
+
+  // ---------- PUZZLE 5: FINAL COMBINED ----------
+  function startFinalPuzzle(n){
+    // combined: pick correct rune (1 of 4) then correct sequence order of 3 words
+    const runeChoices = ['☉','☾','✧','⚚'];
+    const correctRune = runeChoices[Math.floor(Math.random()*4)];
+    const words = ['Cahaya','Kebenaran','Harapan'];
+    let order = words.slice().sort(()=>Math.random()-0.5);
+    state.puzzle = {
+      stage:1, runeChoices, correctRune, cursor:0,
+      words: order, picked:[], correctOrder:['Harapan','Kebenaran','Cahaya']
+    };
+    renderFinal();
+  }
+  function renderFinal(){
+    const p = state.puzzle;
+    if(p.stage===1){
+      screen.innerHTML = `
+        <div id="puzzleOverlay">
+          <h2>Ruang Puncak — Tahap 1</h2>
+          <div class="desc">Altar meminta satu rune penuntun cahaya. Rasakan mana yang beresonansi. (Petunjuk: pilih dengan intuisi — coba saja, altar akan memberitahumu jika salah.)</div>
+          <div class="runeGrid" id="finalRuneGrid"></div>
+        </div>
+      `;
+      const g = document.getElementById('finalRuneGrid');
+      g.innerHTML='';
+      p.runeChoices.forEach((sym,i)=>{
+        const el=document.createElement('div');
+        el.className='rune';
+        el.textContent=sym;
+        if(i===p.cursor) el.classList.add('selected');
+        g.appendChild(el);
+      });
+    } else {
+      screen.innerHTML = `
+        <div id="puzzleOverlay">
+          <h2>Ruang Puncak — Tahap 2</h2>
+          <div class="desc">Susun kata suci sesuai urutan: Harapan → Kebenaran → Cahaya.</div>
+          <div class="seqSlots" id="fSlots"></div>
+          <div class="seqRow" id="fRow"></div>
+        </div>
+      `;
+      const slotsEl = document.getElementById('fSlots');
+      slotsEl.innerHTML='';
+      for(let i=0;i<3;i++){
+        const s=document.createElement('div');
+        s.className='seqSlot';
+        s.textContent = p.picked[i] ? (i+1) : '';
+        slotsEl.appendChild(s);
+      }
+      const row = document.getElementById('fRow');
+      row.innerHTML='';
+      p.words.forEach((w,i)=>{
+        const el=document.createElement('div');
+        el.className='seqCard';
+        if(p.picked.includes(w)) el.classList.add('picked');
+        if(i===p.cursor2) el.style.borderColor='var(--gold)';
+        el.textContent=w;
+        row.appendChild(el);
+      });
+      if(p.cursor2===undefined) p.cursor2=0;
+    }
+  }
+  function finalInput(key){
+    const p = state.puzzle;
+    if(p.stage===1){
+      let c=p.cursor||0;
+      if(key==='left') c=(c-1+4)%4;
+      else if(key==='right') c=(c+1)%4;
+      else if(key==='confirm'){
+        // any choice works narratively but let's require matching correctRune, retry if wrong
+        if(p.runeChoices[c]===p.correctRune){
+          p.stage=2;
+          p.cursor2=0;
+        } else {
+          footerLeft.textContent='Rune itu diam saja... coba rune lain.';
+        }
+      }
+      p.cursor=c;
+      renderFinal();
+    } else {
+      let c=p.cursor2||0;
+      if(key==='left') c=(c-1+p.words.length)%p.words.length;
+      else if(key==='right') c=(c+1)%p.words.length;
+      else if(key==='confirm'){
+        const w = p.words[c];
+        if(!p.picked.includes(w)) p.picked.push(w);
+        if(p.picked.length===3){
+          const correct = p.picked.every((name,i)=>name===p.correctOrder[i]);
+          if(correct){
+            setTimeout(()=>completeFloor(5), 400);
+          } else {
+            footerLeft.textContent='Urutan belum tepat, altar mereset kata.';
+            p.picked=[];
+          }
+        }
+      }
+      p.cursor2=c;
+      renderFinal();
+    }
+  }
+
+  // ---------- ENDING ----------
+  function showEnding(){
+    state.scene='ending';
+    screen.innerHTML = `
+      <div class="center-msg">
+        <h1>✧ Kutukan Terurai ✧</h1>
+        <p>Dengan artefak di tanganmu, cahaya keemasan menyapu seluruh menara. Bayangan yang dulu merayap keluar kini lenyap ditelan cahaya.</p>
+        <p>Kau turun dari menara sebagai penjelajah level ${state.level}, membawa pulang harapan baru untuk kampung halamanmu.</p>
+        <p class="hint">— TAMAT —</p>
+        <div class="btnish" id="restartBtn">Tekan ENTER untuk main lagi</div>
+      </div>
+    `;
+  }
+
+  function showGameOver(){
+    state.scene='gameover';
+    screen.innerHTML = `
+      <div class="center-msg">
+        <h2>Kau Tumbang...</h2>
+        <p>Kegelapan menara terlalu kuat kali ini. Namun kisahmu belum selesai.</p>
+        <div class="btnish">Tekan ENTER untuk mencoba lagi</div>
+      </div>
+    `;
+  }
+
+  function resetGame(){
+    state.hp=30; state.maxHp=30; state.level=1;
+    lvlDisplay.textContent='Lv.1';
+    setHP(30);
+    showIntro();
+  }
+
+  // ---------- INPUT HANDLING ----------
+  window.addEventListener('keydown', (e)=>{
+    const k = e.key.toLowerCase();
+    let dir=null, confirm=false;
+    if(k==='arrowleft'||k==='a') dir='left';
+    else if(k==='arrowright'||k==='d') dir='right';
+    else if(k==='arrowup'||k==='w') dir='up';
+    else if(k==='arrowdown'||k==='s') dir='down';
+    else if(k===' '||k==='enter') confirm=true;
+    if(dir || confirm) e.preventDefault();
+
+    switch(state.scene){
+      case 'intro':
+        if(confirm){ startFloor(1); }
+        break;
+      case 'dialog':
+        if(confirm){ advanceDialog(); }
+        break;
+      case 'overworld':
+        if(dir){
+          if(dir==='left') moveOverworld(-1,0);
+          else if(dir==='right') moveOverworld(1,0);
+          else if(dir==='up') moveOverworld(0,-1);
+          else if(dir==='down') moveOverworld(0,1);
+        }
+        break;
+      case 'puzzle': {
+        const f = floors[state.floor];
+        const key = confirm ? 'confirm' : dir;
+        if(!key) break;
+        if(f.puzzleType==='match') matchInput(key);
+        else if(f.puzzleType==='sokoban') sokobanInput(key);
+        else if(f.puzzleType==='sequence') sequenceInput(key);
+        else if(f.puzzleType==='battle') battleInput(key);
+        else if(f.puzzleType==='final') finalInput(key);
+        break;
+      }
+      case 'ending':
+      case 'gameover':
+        if(confirm){ resetGame(); }
+        break;
+    }
+  });
+
+  // init
+  showIntro();
+})();
+</script>
+</body>
+</html>

@@ -292,7 +292,6 @@
   }
 
   // ---------- FLOOR DEFINITIONS ----------
-  // Each floor: intro dialog -> overworld with a puzzle door -> puzzle -> outro dialog -> next floor
   const floors = [
     null, // index 0 unused
     {
@@ -504,8 +503,6 @@
 
   // ---------- PUZZLE 2: SOKOBAN ----------
   function startSokobanPuzzle(n){
-    // simple 6x6 sokoban
-    // # wall, . floor, T target, B box, P player
     const layout = [
       "######",
       "#....#",
@@ -565,7 +562,6 @@
     }
     player.x=nx; player.y=ny;
     renderSokoban();
-    // check win: no more 'B' or 'T' remaining that isn't matched
     let boxesLeft=false;
     for(const row of grid) if(row.includes('B')) boxesLeft=true;
     if(!boxesLeft){
@@ -696,7 +692,6 @@
         return;
       }
       if(p.round>p.totalRounds && p.enemyHp>0){
-        // extend battle until resolved but cap safety
         p.totalRounds+=1;
       }
     }
@@ -706,7 +701,6 @@
 
   // ---------- PUZZLE 5: FINAL COMBINED ----------
   function startFinalPuzzle(n){
-    // combined: pick correct rune (1 of 4) then correct sequence order of 3 words
     const runeChoices = ['☉','☾','✧','⚚'];
     const correctRune = runeChoices[Math.floor(Math.random()*4)];
     const words = ['Cahaya','Kebenaran','Harapan'];
@@ -773,7 +767,6 @@
       if(key==='left') c=(c-1+4)%4;
       else if(key==='right') c=(c+1)%4;
       else if(key==='confirm'){
-        // any choice works narratively but let's require matching correctRune, retry if wrong
         if(p.runeChoices[c]===p.correctRune){
           p.stage=2;
           p.cursor2=0;
@@ -884,40 +877,40 @@
   // init
   showIntro();
 
-  // ---------- VISITOR COUNTER (simple, free, no backend needed) ----------
-  // Pakai CountAPI (gratis, tanpa perlu daftar/API key).
-  // Namespace otomatis dari domain GitHub Pages kamu, jadi tiap repo punya hitungan sendiri.
+  // ---------- VISITOR COUNTER (CounterAPI v2, public counter, no auth) ----------
   (function visitorCounter(){
-  const badge = document.getElementById('visitorBadge');
-  const textEl = badge.querySelector('.vb-text');
+    const badge = document.getElementById('visitorBadge');
+    const textEl = badge.querySelector('.vb-text');
 
-  const API_TOKEN = 'ut_qlsAs67UARCKm4TJ31JQFEzrIfK8dYA93Acb2F7b';
-  const WORKSPACE = 'bagus-satrio-tio-nugrohos-team-4671';
-  const COUNTER = 'first-counter-4671';
-  const url = `https://api.counterapi.dev/v2/${WORKSPACE}/${COUNTER}/up`;
+    const WORKSPACE = 'bagus-satrio-tio-nugrohos-team-4671';
+    const COUNTER = 'first-counter-4671';
+    const url = `https://api.counterapi.dev/v2/${WORKSPACE}/${COUNTER}/up`;
 
-  fetch(url, {
-    method: 'GET',
-    headers: {
-      'Authorization': `Bearer ${API_TOKEN}`
-    }
-  })
-    .then(r => {
-      if(!r.ok) throw new Error('HTTP ' + r.status);
-      return r.json();
-    })
-    .then(res => {
-      const count = res.data.up_count;
-      textEl.innerHTML = `Selamat datang Pahlawan!<br>Anda pengunjung ke <b>${count}</b>`;
-    })
-    .catch(err => {
-      console.error('Visitor counter error:', err);
-      textEl.textContent = 'Selamat datang, Pahlawan!';
-    })
-    .finally(() => {
-      badge.classList.add('show');
-    });
-})();
+    // Counter ini bersifat PUBLIC, jadi TIDAK perlu header Authorization.
+    // Mengirim header Authorization dari browser akan memicu CORS preflight
+    // yang ditolak oleh server (Access-Control-Allow-Headers tidak mengizinkan
+    // header custom), sehingga request gagal total (net::ERR_FAILED).
+    fetch(url, { method: 'GET' })
+      .then(r => {
+        if(!r.ok) throw new Error('HTTP ' + r.status);
+        return r.json();
+      })
+      .then(res => {
+        const count = res && res.data ? res.data.up_count : null;
+        if(count !== null && count !== undefined){
+          textEl.innerHTML = `Selamat datang Pahlawan!<br>Anda pengunjung ke <b>${count}</b>`;
+        } else {
+          textEl.textContent = 'Selamat datang, Pahlawan!';
+        }
+      })
+      .catch(err => {
+        console.error('Visitor counter error:', err);
+        textEl.textContent = 'Selamat datang, Pahlawan!';
+      })
+      .finally(() => {
+        badge.classList.add('show');
+      });
+  })();
 })();
 </script>
 </body>

@@ -505,10 +505,10 @@
   function startSokobanPuzzle(n){
     const layout = [
       "######",
-      "#....#",
-      "#.BT.#",
-      "#.T#.#",
+      "#.T..#",
+      "#.B..#",
       "#..B.#",
+      "#..T.#",
       "######"
     ];
     let grid = layout.map(r=>r.split(''));
@@ -913,5 +913,6 @@
   })();
 })();
 </script>
+<div style="position:fixed;bottom:4px;left:8px;font-size:10px;color:#5a4d70;z-index:999;font-family:monospace;">v1.0</div>
 </body>
 </html>

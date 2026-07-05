@@ -888,22 +888,36 @@
   // Pakai CountAPI (gratis, tanpa perlu daftar/API key).
   // Namespace otomatis dari domain GitHub Pages kamu, jadi tiap repo punya hitungan sendiri.
   (function visitorCounter(){
-    const badge = document.getElementById('visitorBadge');
-    const textEl = badge.querySelector('.vb-text');
-    const ns = (location.hostname || 'ruins-tower').replace(/[^a-zA-Z0-9]/g,'-');
-    const key = 'tower-visits';
-    fetch(`https://api.countapi.xyz/hit/${ns}/${key}`)
-      .then(r=>r.json())
-      .then(data=>{
-        textEl.innerHTML = `Selamat datang Pahlawan!<br>Anda pengunjung ke <b>${data.value}</b>`;
-      })
-      .catch(()=>{
-        textEl.textContent = 'Selamat datang, Pahlawan!';
-      })
-      .finally(()=>{
-        badge.classList.add('show');
-      });
-  })();
+  const badge = document.getElementById('visitorBadge');
+  const textEl = badge.querySelector('.vb-text');
+
+  const API_TOKEN = 'ut_qlsAs67UARCKm4TJ31JQFEzrIfK8dYA93Acb2F7b';
+  const WORKSPACE = 'bagus-satrio-tio-nugrohos-team-4671';
+  const COUNTER = 'first-counter-4671';
+  const url = `https://api.counterapi.dev/v2/${WORKSPACE}/${COUNTER}/up`;
+
+  fetch(url, {
+    method: 'GET',
+    headers: {
+      'Authorization': `Bearer ${API_TOKEN}`
+    }
+  })
+    .then(r => {
+      if(!r.ok) throw new Error('HTTP ' + r.status);
+      return r.json();
+    })
+    .then(res => {
+      const count = res.data.up_count;
+      textEl.innerHTML = `Selamat datang Pahlawan!<br>Anda pengunjung ke <b>${count}</b>`;
+    })
+    .catch(err => {
+      console.error('Visitor counter error:', err);
+      textEl.textContent = 'Selamat datang, Pahlawan!';
+    })
+    .finally(() => {
+      badge.classList.add('show');
+    });
+})();
 })();
 </script>
 </body>
